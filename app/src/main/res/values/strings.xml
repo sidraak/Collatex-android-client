@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">LatexEditor</string>
     <string name="action_settings">Settings</string>
-    <string name="signs_prompt">Choose a country</string>
+    <string name="signs_prompt">+</string>
 
     <string-array name="signs_arrays">
         <item>+</item>
