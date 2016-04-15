@@ -11,7 +11,8 @@
     android:orientation="vertical"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:context="com.example.latex.latexeditor.MainActivity"
-    tools:showIn="@layout/activity_main">
+    tools:showIn="@layout/activity_main"
+    android:weightSum="1">
 
     <LinearLayout
         android:orientation="horizontal"
@@ -60,25 +61,36 @@
     </LinearLayout>
 
     <EditText
-        android:layout_width="344dp"
+        android:layout_width="match_parent"
         android:layout_height="280dp"
         android:inputType="textMultiLine"
         android:ems="10"
         android:id="@+id/editTextLatex"
         android:layout_gravity="center_horizontal"
-        android:gravity="top"/>
+        android:gravity="top"
+        android:layout_weight="0.72"
+        android:layout_margin="1dp"/>
 
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            />
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Save"
-        android:id="@+id/btnSave" />
+        android:id="@+id/btnSave"/>
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Convert"
-        android:id="@+id/btnConvert" />
+        android:id="@+id/btnConvert"/>
 
-
+</LinearLayout>
 </LinearLayout>
