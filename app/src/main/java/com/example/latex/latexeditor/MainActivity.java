@@ -2,14 +2,18 @@ package com.example.latex.latexeditor;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
+
 import io.socket.IOAcknowledge;
 import io.socket.IOCallback;
 import io.socket.SocketIO;
@@ -24,12 +28,16 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
     String sessonid;
     EditText editTextLatex;
     String valueFromServer;
-    Button btnSave, btnConvert, btnSigns, btnDollar, btnSquareBrackets, btnCurlyBrackets, btnSlash;
+    Spinner btnSigns;
+    Button btnSave, btnConvert, btnDollar, btnSquareBrackets, btnCurlyBrackets, btnSlash;
+    private boolean mIsSpinnerFirstCall=true, mIsResettingValue = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
        //lo bas
         try {
             Log.d("before","connecting");
@@ -53,7 +61,7 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
         btnSave.setOnClickListener(this);
         btnConvert = (Button) findViewById(R.id.btnConvert);
         btnConvert.setOnClickListener(this);
-        //btnSigns = (Button) findViewById(R.id.btnSigns);
+        btnSigns = (Spinner) findViewById(R.id.btnSigns);
         //btnSigns.setOnClickListener(this);
         btnDollar = (Button) findViewById(R.id.btnDollar);
         btnDollar.setOnClickListener(this);
@@ -63,7 +71,26 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
         btnCurlyBrackets.setOnClickListener(this);
         btnSlash = (Button) findViewById(R.id.btnSlash);
         btnSlash.setOnClickListener(this);
+
+        btnSigns.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                if (!mIsSpinnerFirstCall) {
+                    editTextLatex.getText().insert(editTextLatex.getSelectionStart(), parentView.getItemAtPosition(position).toString());
+                }
+                mIsSpinnerFirstCall = false;
+
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
+                // your code here
+            }
+
+        });
+
     }
+
 
     private final TextWatcher latexWatcher = new TextWatcher() {
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {
