@@ -2,9 +2,11 @@ package com.example.latex.latexeditor;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
@@ -21,18 +23,19 @@ import android.widget.TextView;
 import io.socket.SocketIO;
 import org.json.JSONException;
 import org.json.JSONObject;
+import android.app.AlertDialog.Builder;
+import android.widget.Toast;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private SocketIO socket;
     private Menu menu;
-    String sessonid, email, user_email;
+    String sessonid, email, valueFromServer, onlineUsersList="No user is logged in",saveTextFromEditor;
     EditText editTextLatex;
-    public String valueFromServer, onlineUsersList="No user is logged in";
     Spinner btnSigns;
-    Button btnSave, btnConvert, btnDollar, btnSquareBrackets, btnCurlyBrackets, btnSlash, btnLoggedinUsers;
+    Button btnSave, btnConvert, btnDollar, btnSquareBrackets, btnCurlyBrackets, btnSlash, btnLoggedinUsers,btnReconnect;
     TextView txtOnlineUsers;
-    private boolean mIsSpinnerFirstCall=true, mIsResettingValue = false;
+    private boolean mIsSpinnerFirstCall=true, doubleBackToExitPressedOnce = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,7 +45,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setSupportActionBar(toolbar);
 
         try {
-            //makeConnection();
             initializeComponents();
             registerReceivers();
 
@@ -56,23 +58,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void initializeComponents()
     {
-        if(SocketSingleton.getSocket() != null)
-        {
-            socket = SocketSingleton.getSocket();
-        }
-        else {
+        Bundle extras = getIntent().getExtras();
+
             SocketSingleton.get(this.getApplicationContext());
             socket = SocketSingleton.getSocket();
             socket.emit("room", "abc123");
-        }
-        Bundle extras = getIntent().getExtras();
-        String id;
-        if (extras != null) {
 
-            email = extras.getString("email");
-
-        }
-
+        btnReconnect = (Button) findViewById(R.id.btnReconnect);
+        btnReconnect.setOnClickListener(this);
         btnLoggedinUsers = (Button) findViewById(R.id.btnLoggedinUsers);
         btnLoggedinUsers.setOnClickListener(this);
         editTextLatex = (EditText) findViewById(R.id.editTextLatex);
@@ -109,28 +102,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         });
 
+        if (extras != null) {
+
+            email = extras.getString("email");
+            editTextLatex.setText(extras.getString("editorText"));
+        }
     }
 
-private void registerReceivers()
-{
-    IntentFilter sessionidFilter = new IntentFilter("getSessionid");
-    IntentFilter onlineUsers = new IntentFilter("getNumOfUsersOnline");
-    IntentFilter serverCharacter = new IntentFilter("getServerCharacter");
-    IntentFilter serverUseronlineList = new IntentFilter("getServerUseronlineList");
-    this.registerReceiver(new MessageReceiver(), sessionidFilter);
-    this.registerReceiver(new MessageReceiver(), onlineUsers);
-    this.registerReceiver(new MessageReceiver(), serverCharacter);
-    this.registerReceiver(new MessageReceiver(), serverUseronlineList);
-}
+    private void registerReceivers()
+    {
+        IntentFilter sessionidFilter = new IntentFilter("getSessionid");
+        IntentFilter onlineUsers = new IntentFilter("getNumOfUsersOnline");
+        IntentFilter serverCharacter = new IntentFilter("getServerCharacter");
+        IntentFilter serverUseronlineList = new IntentFilter("getServerUseronlineList");
+        this.registerReceiver(new MessageReceiver(), sessionidFilter);
+        this.registerReceiver(new MessageReceiver(), onlineUsers);
+        this.registerReceiver(new MessageReceiver(), serverCharacter);
+        this.registerReceiver(new MessageReceiver(), serverUseronlineList);
+    }
     public class MessageReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent){
+
+    @Override
+    public void onReceive(Context context, Intent intent){
 
             CharSequence intentData;
 
             if(intent.getExtras().get("sessionid") != null) {
                 intentData = (CharSequence) intent.getExtras().get("sessionid");
-                Log.d("Session id", intentData.toString());
+                sessonid =  intentData.toString();
+                Log.d("Session id", sessonid);
 
             }
             if(intent.getExtras().get("onlineUsers") != null)
@@ -149,6 +149,7 @@ private void registerReceivers()
             {
                 intentData = (CharSequence) intent.getExtras().get("serverCharacter");
                 valueFromServer = intentData.toString();
+                saveTextFromEditor = valueFromServer;
                 Log.d("Character from server", intentData.toString());
                 runOnUiThread(new Runnable() {
                     @Override
@@ -176,6 +177,7 @@ private void registerReceivers()
 
         public void onTextChanged(CharSequence s, int start, int before, int count) {
             try {
+                saveTextFromEditor = editTextLatex.getText().toString();
                 JSONObject obj = new JSONObject();
 
                 obj.put("buffer", editTextLatex.getText().toString());
@@ -199,6 +201,7 @@ private void registerReceivers()
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         changeMenuOptionText(menu);
+        this.menu = menu;
         return true;
     }
 
@@ -214,14 +217,21 @@ private void registerReceivers()
             if(email == null) {
                 Intent i = new Intent(getApplicationContext(), LoginActivity.class);
                 i.putExtra("sessionid", sessonid);
+                i.putExtra("editorText",saveTextFromEditor);
                 startActivity(i);
+            }
+            else
+            {
+                showMessage("Confirm","Are you sure, you want to disconnect from server?");
             }
 
             return true;
         }
         else if(id == R.id.exit)
         {
+            SocketSingleton.makeInstanceNull();
             socket.disconnect();
+            SocketSingleton.disconnectSocket();
             this.finish();
         }
 
@@ -236,8 +246,17 @@ private void registerReceivers()
             JSONObject obj = new JSONObject();
             obj.put("name", "MyLatexDoc");
             obj.put("content", editTextLatex.getText().toString());
-            obj.put("owner", "Sidra");
+            if(email != null)
+            {
+                obj.put("owner", email);
+            }
+            else
+            {
+                obj.put("owner", "Sidra");
+            }
+
             socket.emit("client_doc", obj, sessonid);
+            btnConvert.setEnabled(true);
             }
         else if(v == btnConvert)
         {
@@ -266,6 +285,18 @@ private void registerReceivers()
         {
             editTextLatex.getText().insert(editTextLatex.getSelectionStart(), "\\");
         }
+        else if(v ==btnReconnect)
+        {
+            SocketSingleton.get(this.getApplicationContext());
+            socket = SocketSingleton.getSocket();
+            socket.emit("room", "abc123");
+            btnSave.setEnabled(true);
+            btnConvert.setEnabled(true);
+            editTextLatex.setEnabled(true);
+            btnLoggedinUsers.setEnabled(true);
+            btnReconnect.setVisibility(View.INVISIBLE);
+        }
+
         }
 
         catch (JSONException e) {
@@ -273,9 +304,58 @@ private void registerReceivers()
         }
     }
 
+    public void showMessage(String title, String message) {
+        Builder builder = new Builder(this);
+        builder.setCancelable(true);
+        builder.setTitle(title);
+        builder.setMessage(message);
+
+        builder.setPositiveButton("Ok",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        socket.emit("client_logout", email, sessonid);
+                        btnSave.setEnabled(false);
+                        btnConvert.setEnabled(false);
+                        editTextLatex.setEnabled(false);
+                        btnLoggedinUsers.setEnabled(false);
+                        btnReconnect.setVisibility(View.VISIBLE);
+                        email = null;
+                        changeMenuOptionText(menu);
+                        SocketSingleton.makeInstanceNull();
+                        socket = null;
+                    }
+                });
+        builder.show();
+    }
+
 private void changeMenuOptionText(Menu menu)
 {
     if(email != null)
         menu.getItem(0).setTitle("Logout");
+    else
+        menu.getItem(0).setTitle("Login");
 }
+
+    @Override
+    public void onBackPressed() {
+        if (doubleBackToExitPressedOnce) {
+            SocketSingleton.makeInstanceNull();
+            socket.disconnect();
+            SocketSingleton.disconnectSocket();
+            socket = null;
+            super.onBackPressed();
+            return;
+        }
+
+        this.doubleBackToExitPressedOnce = true;
+        Toast.makeText(this, "Please click BACK again to exit", Toast.LENGTH_SHORT).show();
+
+        new Handler().postDelayed(new Runnable() {
+
+            @Override
+            public void run() {
+                doubleBackToExitPressedOnce = false;
+            }
+        }, 2000);
+    }
 }

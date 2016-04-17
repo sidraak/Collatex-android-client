@@ -1,6 +1,7 @@
 package com.example.latex.latexeditor;
 
 import android.app.Activity;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -20,6 +21,7 @@ public class OnlineUsersList extends Activity {
         try {
             this.requestWindowFeature(Window.FEATURE_NO_TITLE);
             setContentView(R.layout.activity_online_users_list);
+            this.getWindow().getDecorView().setBackgroundColor(Color.WHITE);
             initializeComponent();
         }
         catch (Exception ex)

@@ -5,8 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -23,7 +21,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     private SocketIO socket;
     Button btnLoginAndRegistered, btnRegister;
     TextView txtEmail, txtPassword;
-    private String sessionid, valueFromServer;
+    private String sessionid, valueFromServer, editorText;
     Toolbar toolbar;
 
     @Override
@@ -41,6 +39,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         Bundle extras = getIntent().getExtras();
         if (extras != null) {
             sessionid = extras.getString("sessionid");
+            editorText = extras.getString("editorText");
         }
         socket = SocketSingleton.getSocket();
         btnLoginAndRegistered = (Button) findViewById(R.id.btnLoginAndRegistered);
@@ -78,10 +77,11 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                 }
                 else
                 {
-                    Toast.makeText(getApplicationContext(), valueFromServer, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(), "Successfully Logged in", Toast.LENGTH_LONG).show();
                     Intent i = new Intent(getApplicationContext(), MainActivity.class);
                     i.putExtra("userId",valueFromServer);
                     i.putExtra("email", txtEmail.getText().toString());
+                    i.putExtra("editorText", editorText);
                     startActivity(i);
                 }
 
@@ -92,28 +92,21 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                 Log.d("Server Registeration", intentData.toString());
                 if(valueFromServer.equals("no match found"))
                 {
-                    Toast.makeText(getApplicationContext(), "No match found", Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(), "Could not register", Toast.LENGTH_LONG).show();
                 }
                 else
                 {
-                    //Bundle dataBundle = new Bundle();
-                    //dataBundle.putString("userId",valueFromServer);
-                    //dataBundle.putString("emailId", txtEmail.getText().toString());
-                    Toast.makeText(getApplicationContext(), valueFromServer, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(), "Registered", Toast.LENGTH_LONG).show();
                     Intent i = new Intent(getApplicationContext(), MainActivity.class);
                     i.putExtra("userId", valueFromServer);
                     i.putExtra("email", txtEmail.getText().toString());
+                    i.putExtra("editorText", editorText);
                     startActivity(i);
                 }
 
             }
 
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
 
-                }
-            });
         }
     }
 

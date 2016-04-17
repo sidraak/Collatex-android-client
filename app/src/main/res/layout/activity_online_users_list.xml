@@ -18,11 +18,14 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="Current Logged in Users"
         android:id="@+id/textView3"
-        android:layout_gravity="center" />
+        android:layout_gravity="center"
+        android:textColor="@color/colorPrimary"
+        android:textStyle="bold"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="No logged in user"
-        android:id="@+id/txtOnlineUsersList" />
+        android:id="@+id/txtOnlineUsersList"
+        android:textColor="@android:color/black"/>
 </LinearLayout>
