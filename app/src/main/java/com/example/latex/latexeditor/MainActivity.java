@@ -115,10 +115,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         IntentFilter onlineUsers = new IntentFilter("getNumOfUsersOnline");
         IntentFilter serverCharacter = new IntentFilter("getServerCharacter");
         IntentFilter serverUseronlineList = new IntentFilter("getServerUseronlineList");
+        IntentFilter connectionError = new IntentFilter("errorInConnection");
         this.registerReceiver(new MessageReceiver(), sessionidFilter);
         this.registerReceiver(new MessageReceiver(), onlineUsers);
         this.registerReceiver(new MessageReceiver(), serverCharacter);
         this.registerReceiver(new MessageReceiver(), serverUseronlineList);
+        this.registerReceiver(new MessageReceiver(), connectionError);
     }
     public class MessageReceiver extends BroadcastReceiver {
 
@@ -166,7 +168,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Log.d("Loggedin users", intentData.toString());
 
             }
+        if(intent.getExtras().get("errorInConnection") != null)
+        {
+            intentData = (CharSequence) intent.getExtras().get("errorInConnection");
+            Toast.makeText(getApplicationContext(), intentData, Toast.LENGTH_LONG).show();
+            Log.d("Error in connection", intentData.toString());
 
+        }
         }
     }
 
