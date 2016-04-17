@@ -1,5 +1,9 @@
 package com.example.latex.latexeditor;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -13,23 +17,21 @@ import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
-
-import io.socket.IOAcknowledge;
-import io.socket.IOCallback;
+import android.widget.TextView;
 import io.socket.SocketIO;
-import io.socket.SocketIOException;
 import org.json.JSONException;
 import org.json.JSONObject;
-import java.net.MalformedURLException;
 
 
-public class MainActivity extends AppCompatActivity implements IOCallback, View.OnClickListener{
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private SocketIO socket;
-    String sessonid;
+    private Menu menu;
+    String sessonid, email, user_email;
     EditText editTextLatex;
-    String valueFromServer;
+    public String valueFromServer, onlineUsersList="No user is logged in";
     Spinner btnSigns;
-    Button btnSave, btnConvert, btnDollar, btnSquareBrackets, btnCurlyBrackets, btnSlash;
+    Button btnSave, btnConvert, btnDollar, btnSquareBrackets, btnCurlyBrackets, btnSlash, btnLoggedinUsers;
+    TextView txtOnlineUsers;
     private boolean mIsSpinnerFirstCall=true, mIsResettingValue = false;
 
     @Override
@@ -38,13 +40,12 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-       //lo bas
+
         try {
-            Log.d("before","connecting");
-           // mSocket = IO.socket(Constants.CHAT_SERVER_URL);// serce/
-            makeConnection();
+            //makeConnection();
             initializeComponents();
-            Log.d("after", "connected");// disconnect hata k
+            registerReceivers();
+
         }
         catch(Exception ex)
         {
@@ -55,6 +56,25 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
 
     private void initializeComponents()
     {
+        if(SocketSingleton.getSocket() != null)
+        {
+            socket = SocketSingleton.getSocket();
+        }
+        else {
+            SocketSingleton.get(this.getApplicationContext());
+            socket = SocketSingleton.getSocket();
+            socket.emit("room", "abc123");
+        }
+        Bundle extras = getIntent().getExtras();
+        String id;
+        if (extras != null) {
+
+            email = extras.getString("email");
+
+        }
+
+        btnLoggedinUsers = (Button) findViewById(R.id.btnLoggedinUsers);
+        btnLoggedinUsers.setOnClickListener(this);
         editTextLatex = (EditText) findViewById(R.id.editTextLatex);
         editTextLatex.addTextChangedListener(latexWatcher);
         btnSave = (Button) findViewById(R.id.btnSave);
@@ -71,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
         btnCurlyBrackets.setOnClickListener(this);
         btnSlash = (Button) findViewById(R.id.btnSlash);
         btnSlash.setOnClickListener(this);
-
+        txtOnlineUsers = (TextView) findViewById(R.id.txtOnlineUsers);
         btnSigns.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
@@ -91,6 +111,63 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
 
     }
 
+private void registerReceivers()
+{
+    IntentFilter sessionidFilter = new IntentFilter("getSessionid");
+    IntentFilter onlineUsers = new IntentFilter("getNumOfUsersOnline");
+    IntentFilter serverCharacter = new IntentFilter("getServerCharacter");
+    IntentFilter serverUseronlineList = new IntentFilter("getServerUseronlineList");
+    this.registerReceiver(new MessageReceiver(), sessionidFilter);
+    this.registerReceiver(new MessageReceiver(), onlineUsers);
+    this.registerReceiver(new MessageReceiver(), serverCharacter);
+    this.registerReceiver(new MessageReceiver(), serverUseronlineList);
+}
+    public class MessageReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent){
+
+            CharSequence intentData;
+
+            if(intent.getExtras().get("sessionid") != null) {
+                intentData = (CharSequence) intent.getExtras().get("sessionid");
+                Log.d("Session id", intentData.toString());
+
+            }
+            if(intent.getExtras().get("onlineUsers") != null)
+            {
+                intentData = (CharSequence) intent.getExtras().get("onlineUsers");
+                valueFromServer = intentData.toString();
+                Log.d("Online users", valueFromServer);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        txtOnlineUsers.setText(valueFromServer);
+                    }
+                });
+            }
+            if(intent.getExtras().get("serverCharacter") != null)
+            {
+                intentData = (CharSequence) intent.getExtras().get("serverCharacter");
+                valueFromServer = intentData.toString();
+                Log.d("Character from server", intentData.toString());
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        editTextLatex.setText(valueFromServer);
+
+                    }
+                });
+            }
+            if(intent.getExtras().get("serverUseronlineList") != null)
+            {
+                intentData = (CharSequence) intent.getExtras().get("serverUseronlineList");
+                onlineUsersList = intentData.toString();
+                Log.d("Loggedin users", intentData.toString());
+
+            }
+
+        }
+    }
 
     private final TextWatcher latexWatcher = new TextWatcher() {
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -121,6 +198,7 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        changeMenuOptionText(menu);
         return true;
     }
 
@@ -132,71 +210,22 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.login) {
+            if(email == null) {
+                Intent i = new Intent(getApplicationContext(), LoginActivity.class);
+                i.putExtra("sessionid", sessonid);
+                startActivity(i);
+            }
+
             return true;
+        }
+        else if(id == R.id.exit)
+        {
+            socket.disconnect();
+            this.finish();
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    private void makeConnection() throws MalformedURLException {
-        try {
-
-            socket = new SocketIO();
-            socket.connect("http://192.168.137.1:3000", this);
-
-        }
-        catch(Exception ex)
-        {
-            Log.d("ConnectionError",ex.getMessage());
-        }
-    }
-
-    @Override
-    public void onDisconnect() {
-
-    }
-
-    @Override
-    public void onConnect() {
-        socket.emit("room", "abc123");
-    }
-
-    @Override
-    public void onMessage(String s, IOAcknowledge ioAcknowledge) {
-        String test= "";
-    }
-
-    @Override
-    public void onMessage(JSONObject jsonObject, IOAcknowledge ioAcknowledge) {
-        String test= "";
-    }
-
-    @Override
-    public void on(String s, IOAcknowledge ioAcknowledge, Object... objects) {
-        try {
-            valueFromServer = objects[0].toString();
-            if (s.equals("sessionid")) {
-                sessonid = objects[0].toString();
-            } else if (s.equals("server_character")) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        editTextLatex.setText(valueFromServer);}
-                });
-
-            }
-            Log.d("Event name", s);
-        }
-        catch (Exception ex)
-        {
-            Log.d("Object Error: " , ex.getMessage());
-        }
-    }
-
-    @Override
-    public void onError(SocketIOException e) {
-
     }
 
     @Override
@@ -215,9 +244,11 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
             String docName = "MyLatexDoc.tex";
             socket.emit("client_convert", docName, sessonid);
         }
-        else if(v == btnSigns)
+        else if(v == btnLoggedinUsers)
         {
-
+            Intent i = new Intent(getApplicationContext(), OnlineUsersList.class);
+            i.putExtra("loggedinUsersList",onlineUsersList);
+            startActivity(i);
         }
         else if(v == btnSquareBrackets)
         {
@@ -241,4 +272,10 @@ public class MainActivity extends AppCompatActivity implements IOCallback, View.
             e.printStackTrace();
         }
     }
+
+private void changeMenuOptionText(Menu menu)
+{
+    if(email != null)
+        menu.getItem(0).setTitle("Logout");
+}
 }
