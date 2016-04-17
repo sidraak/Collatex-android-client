@@ -1,6 +1,6 @@
 package com.example.latex.latexeditor;
 
-/**
+/*
  * Created by SSc on 4/16/2016.
  */
 import android.content.Context;
